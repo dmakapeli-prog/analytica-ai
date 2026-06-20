@@ -99,7 +99,19 @@ export default function AnalyticaAI() {
     setHealthScore(health);
     setAuditLogs(logs);
 
-    let dateCol = cols.find(c => c.toLowerCase().match(/tanggal|date|bulan|month|tahun|year|periode|waktu/));
+    let dateCol = cols.find(c => {
+      if (!c.toLowerCase().match(/tanggal|date|bulan|month|periode|waktu/)) return false;
+      const allYears = data.every(row => row[c] && String(row[c]).match(/^\d{4}$/));
+      return !allYears;
+    });
+    
+    if (!dateCol) {
+      dateCol = cols.find(c => {
+        const uniques = new Set(data.map(r => r[c])).size;
+        return uniques <= 15 && uniques > 1;
+      });
+    }
+
     let catCol = cols.find(c => {
       if (c === dateCol) return false;
       const uniques = new Set(data.map(r => r[c])).size;
@@ -111,26 +123,37 @@ export default function AnalyticaAI() {
     const newVis: VisualisasiData = { tipe: 'none' };
     
     if (dateCol) {
+      const validDateCol = dateCol;
       const agg: Record<string, number> = {};
       data.forEach(r => {
-        const key = String(r[dateCol]);
+        let key = r[validDateCol];
+        if (key === undefined || key === null || key === "" || String(key).trim() === "" || String(key).toLowerCase() === "undefined") return;
+        key = String(key).trim();
         const val = numCol ? Number(r[numCol]) || 1 : 1;
         agg[key] = (agg[key] || 0) + val;
       });
-      newVis.barData = Object.entries(agg).map(([k, v]) => ({ name: k, value: v })).slice(0, 20);
-      newVis.barXKey = dateCol;
+      newVis.barData = Object.entries(agg)
+        .map(([k, v]) => ({ name: k, value: v }))
+        .slice(0, 20);
+      newVis.barXKey = validDateCol;
       newVis.tipe = 'bar';
     }
     
     if (catCol) {
+      const validCatCol = catCol;
       const agg: Record<string, number> = {};
       data.forEach(r => {
-        const key = String(r[catCol]);
+        let key = r[validCatCol];
+        if (key === undefined || key === null || key === "" || String(key).trim() === "" || String(key).toLowerCase() === "undefined") return;
+        key = String(key).trim();
         const val = numCol ? Number(r[numCol]) || 1 : 1;
         agg[key] = (agg[key] || 0) + val;
       });
-      newVis.pieData = Object.entries(agg).map(([k, v]) => ({ name: k, value: v })).slice(0, 10);
-      newVis.pieNameKey = catCol;
+      newVis.pieData = Object.entries(agg)
+        .map(([k, v]) => ({ name: k, value: v }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 10);
+      newVis.pieNameKey = validCatCol;
       newVis.pieValueKey = "value";
       newVis.tipe = dateCol ? 'bar' : 'pie';
       if (dateCol) newVis.tipe = 'bar';
@@ -195,21 +218,23 @@ export default function AnalyticaAI() {
   const generateReport = async () => {
     setIsGeneratingReport(true);
     
-    const summary = `
-      File: ${fileName}
-      Total Baris: ${totalRows}
-      Total Kolom: ${columns.length}
-      Kolom: ${columns.join(', ')}
-      Baris Bermasalah: ${problematicRows}
-      Kesehatan Data: ${healthScore}%
-      Data Visualisasi Terdeteksi: ${visData.barXKey ? 'Periode: ' + visData.barXKey : ''} ${visData.pieNameKey ? 'Kategori: ' + visData.pieNameKey : ''}
-    `;
+    const summaryObj = {
+      nama_file: fileName,
+      total_baris: totalRows,
+      total_kolom: columns.length,
+      daftar_kolom: columns,
+      kesehatan_data: `${healthScore}%`,
+      baris_bermasalah: problematicRows,
+      sample_data: rawData.slice(0, 10)
+    };
+    
+    const summaryString = JSON.stringify(summaryObj);
 
     try {
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dataSummary: summary })
+        body: JSON.stringify({ dataSummary: summaryString })
       });
       
       const data = await res.json();
