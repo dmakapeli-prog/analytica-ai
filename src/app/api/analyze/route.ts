@@ -3,7 +3,14 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export async function POST(req: Request) {
   try {
-    const { dataSummary } = await req.json();
+    const body = await req.json();
+    let dataSummaryStr = typeof body.dataSummary === 'string' ? body.dataSummary : JSON.stringify(body.dataSummary);
+
+    // Limit and clean string
+    dataSummaryStr = dataSummaryStr.replace(/[^\x00-\x7F]/g, "");
+    if (dataSummaryStr.length > 2000) {
+      dataSummaryStr = dataSummaryStr.substring(0, 2000) + "\n... (terpotong)";
+    }
 
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ error: "GEMINI_API_KEY belum dikonfigurasi di environment." }, { status: 500 });
@@ -15,7 +22,7 @@ export async function POST(req: Request) {
       systemInstruction: "Kamu adalah analis data profesional yang bertugas membuat laporan eksekutif formal dalam Bahasa Indonesia yang baku. Berdasarkan ringkasan data yang diberikan, buat laporan dengan 3 bagian: (1) Ringkasan Utama, (2) Temuan dan Anomali, (3) Saran Tindakan. Gunakan bahasa yang tajam, berbobot, dan mudah dipahami oleh manajer atau pimpinan instansi. Jangan gunakan markdown, tulis dalam paragraf dan poin biasa."
     });
 
-    const prompt = `Tolong buatkan laporan analisis dari ringkasan data berikut:\n\n${dataSummary}`;
+    const prompt = `Tolong buatkan laporan analisis dari ringkasan data berikut:\n\n${dataSummaryStr}`;
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();

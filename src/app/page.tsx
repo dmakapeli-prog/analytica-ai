@@ -5,8 +5,21 @@ import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import { 
   BarChart, Bar, PieChart, Pie, XAxis, YAxis, CartesianGrid, 
-  Tooltip, Legend, ResponsiveContainer, Cell 
+  Tooltip, Legend, ResponsiveContainer, Cell, LabelList
 } from 'recharts';
+
+const RADIAN = Math.PI / 180;
+const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  if (percent < 0.05) return null;
+  return (
+    <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontWeight="bold" fontSize={14}>
+      {`${(percent * 100).toFixed(0)}%`}
+    </text>
+  );
+};
 import html2canvas from 'html2canvas-pro';
 import { 
   ShieldCheck, BarChart2, FileText, Download, Image as ImageIcon, 
@@ -99,11 +112,23 @@ export default function AnalyticaAI() {
     setHealthScore(health);
     setAuditLogs(logs);
 
+    const MONTHS = ['januari', 'februari', 'maret', 'april', 'mei', 'juni', 'juli', 'agustus', 'september', 'oktober', 'november', 'desember'];
+
     let dateCol = cols.find(c => {
-      if (!c.toLowerCase().match(/tanggal|date|bulan|month|periode|waktu/)) return false;
-      const allYears = data.every(row => row[c] && String(row[c]).match(/^\d{4}$/));
-      return !allYears;
+      const hasMonth = data.some(r => {
+        const val = String(r[c]).toLowerCase();
+        return MONTHS.some(m => val.includes(m));
+      });
+      return hasMonth;
     });
+    
+    if (!dateCol) {
+      dateCol = cols.find(c => {
+        if (!c.toLowerCase().match(/tanggal|date|bulan|month|periode|waktu/)) return false;
+        const allYears = data.every(row => row[c] && String(row[c]).match(/^\d{4}$/));
+        return !allYears;
+      });
+    }
     
     if (!dateCol) {
       dateCol = cols.find(c => {
@@ -114,14 +139,30 @@ export default function AnalyticaAI() {
 
     let catCol = cols.find(c => {
       if (c === dateCol) return false;
+      const cLower = c.toLowerCase();
+      if (cLower.match(/kategori|jenis|tipe|status|produk|item|nama/)) return true;
       const uniques = new Set(data.map(r => r[c])).size;
       return uniques <= 15 && uniques > 1;
     });
-    
+
+    if (!catCol) {
+      catCol = cols.find(c => {
+        if (c === dateCol) return false;
+        const uniques = new Set(data.map(r => r[c])).size;
+        return uniques <= 15 && uniques > 1;
+      });
+    }
+
     let numCol = cols.find(c => typeof data[0][c] === 'number');
     
     const newVis: VisualisasiData = { tipe: 'none' };
     
+    const getMonthIndex = (str: string) => {
+      const lower = String(str).toLowerCase();
+      const index = MONTHS.findIndex(m => lower.includes(m));
+      return index !== -1 ? index : 999;
+    };
+
     if (dateCol) {
       const validDateCol = dateCol;
       const agg: Record<string, number> = {};
@@ -132,9 +173,13 @@ export default function AnalyticaAI() {
         const val = numCol ? Number(r[numCol]) || 1 : 1;
         agg[key] = (agg[key] || 0) + val;
       });
-      newVis.barData = Object.entries(agg)
+      
+      const barData = Object.entries(agg)
         .map(([k, v]) => ({ name: k, value: v }))
+        .sort((a, b) => getMonthIndex(a.name) - getMonthIndex(b.name))
         .slice(0, 20);
+        
+      newVis.barData = barData;
       newVis.barXKey = validDateCol;
       newVis.tipe = 'bar';
     }
@@ -225,7 +270,7 @@ export default function AnalyticaAI() {
       daftar_kolom: columns,
       kesehatan_data: `${healthScore}%`,
       baris_bermasalah: problematicRows,
-      sample_data: rawData.slice(0, 10)
+      sample_data: rawData.slice(0, 5)
     };
     
     const summaryString = JSON.stringify(summaryObj);
@@ -526,7 +571,9 @@ export default function AnalyticaAI() {
                             cursor={{ fill: '#f1f5f9' }} 
                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)', padding: '12px 16px', fontWeight: 'bold', color: '#1E3A5F' }} 
                           />
-                          <Bar dataKey="value" name="Jumlah" fill="#2563EB" radius={[6, 6, 0, 0]} />
+                          <Bar dataKey="value" name="Jumlah" fill="#2563EB" radius={[6, 6, 0, 0]}>
+                            <LabelList dataKey="value" position="top" fill="#1E3A5F" fontSize={12} fontWeight="bold" />
+                          </Bar>
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -553,8 +600,8 @@ export default function AnalyticaAI() {
                             paddingAngle={4}
                             dataKey="value"
                             nameKey="name"
-                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(1)}%`}
-                            labelLine={{ stroke: '#cbd5e1', strokeWidth: 2 }}
+                            label={renderCustomizedLabel}
+                            labelLine={false}
                           >
                             {visData.pieData.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
