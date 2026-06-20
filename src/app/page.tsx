@@ -326,10 +326,10 @@ export default function AnalyticaAI() {
             <BarChart2 className="w-10 h-10 text-blue-600" />
           </div>
           <h1 className="text-4xl md:text-6xl font-black text-[#1E3A5F] mb-4 tracking-tight">
-            Analytica AI
+            AI Automated Data Analyst
           </h1>
           <p className="text-slate-500 text-lg md:text-xl font-medium">
-            Unggah file spreadsheet Anda dan biarkan AI menganalisis data secara otomatis
+            Unggah file Excel/CSV data operasional, penjualan, atau akademik Anda di sini.
           </p>
         </div>
 
@@ -382,7 +382,7 @@ export default function AnalyticaAI() {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center font-sans">
         <Loader2 className="w-16 h-16 text-blue-600 animate-spin mb-6" />
-        <h2 className="text-2xl font-bold text-[#1E3A5F]">Membaca struktur data Anda...</h2>
+        <h2 className="text-2xl font-bold text-[#1E3A5F]">AI sedang membaca struktur tabel dan tipe data Anda...</h2>
       </div>
     );
   }
@@ -397,7 +397,7 @@ export default function AnalyticaAI() {
             <div className="bg-blue-600 p-1.5 rounded-lg">
               <BarChart2 className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-black text-blue-600 tracking-tight">Analytica AI</span>
+            <span className="text-xl font-black text-blue-600 tracking-tight">AI Data Analyst</span>
           </div>
           <div className="bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-full text-xs font-bold text-blue-600 flex items-center shadow-sm">
             <Sparkles className="w-3.5 h-3.5 mr-1.5" />
@@ -410,10 +410,27 @@ export default function AnalyticaAI() {
         
         {/* Dashboard Header & Tabs */}
         <div className="mb-8 print:hidden">
-          <div className="flex items-center justify-center mb-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
             <div className="bg-slate-200 border border-slate-300 px-5 py-2 rounded-full text-sm font-semibold text-slate-700 flex items-center shadow-inner">
               <Database className="w-4 h-4 mr-2 text-slate-500" />
               File Aktif: <span className="ml-2 text-slate-900">{fileName}</span>
+            </div>
+            
+            <div className="flex gap-3">
+              <button 
+                onClick={exportPNG}
+                className="flex items-center justify-center px-4 py-2 border-2 border-teal-500 text-teal-600 hover:bg-teal-50 font-bold rounded-xl transition-colors text-sm"
+              >
+                <ImageIcon className="w-4 h-4 mr-2" />
+                Unduh Grafik (PNG)
+              </button>
+              <button 
+                onClick={printPDF}
+                className="flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-blue-600/30 text-sm"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Ekspor Laporan (PDF)
+              </button>
             </div>
           </div>
 
@@ -523,7 +540,7 @@ export default function AnalyticaAI() {
               <Info className="w-6 h-6 mt-0.5 mr-4 flex-shrink-0 text-blue-200" />
               {auditLogs.filter(l => l.jumlahKosong > 0).length > 0 ? (
                 <p className="text-base leading-relaxed font-medium">
-                  <strong className="text-white">Notifikasi AI:</strong> Terdeteksi adanya baris data kosong pada kolom {auditLogs.filter(l => l.jumlahKosong > 0).map(l => `[${l.namaKolom}]`).join(', ')}. Walaupun data kotor telah teridentifikasi, untuk tujuan analitik otomatis, AI akan menyesuaikan perhitungannya dengan mengabaikan nilai kosong tersebut agar grafik tetap relevan.
+                  <strong className="text-white">Notifikasi AI:</strong> AI berhasil mendeteksi {auditLogs.reduce((acc, l) => acc + l.jumlahKosong, 0)} baris kosong pada kolom penting ({auditLogs.filter(l => l.jumlahKosong > 0).map(l => l.namaKolom).join(', ')}) dan telah menyesuaikannya agar grafik tetap akurat.
                 </p>
               ) : (
                 <p className="text-base leading-relaxed font-medium">
@@ -632,7 +649,7 @@ export default function AnalyticaAI() {
                 </div>
                 <h3 className="text-3xl font-black text-[#1E3A5F] mb-4">Laporan Eksekutif AI</h3>
                 <p className="text-slate-500 mb-10 max-w-xl mx-auto text-lg">
-                  Analytica AI akan membaca metrik dan pola dari keseluruhan data Anda, lalu menyusun laporan naratif eksekutif secara instan yang siap untuk dipresentasikan.
+                  AI Automated Data Analyst akan membaca metrik dan pola dari keseluruhan data Anda, lalu menyusun laporan naratif eksekutif secara instan yang siap untuk dipresentasikan.
                 </p>
                 <button 
                   onClick={generateReport}
@@ -647,7 +664,7 @@ export default function AnalyticaAI() {
             {isGeneratingReport && (
               <div className="bg-white p-16 rounded-3xl shadow-sm border border-slate-200 text-center print:hidden">
                 <Loader2 className="w-16 h-16 text-blue-600 animate-spin mx-auto mb-6" />
-                <h3 className="text-2xl font-bold text-[#1E3A5F]">Analytica AI sedang menganalisis...</h3>
+                <h3 className="text-2xl font-bold text-[#1E3A5F]">AI sedang menganalisis data Anda...</h3>
                 <p className="text-slate-500 mt-2 text-lg">Mengekstraksi wawasan, menemukan anomali, dan merumuskan saran tindakan cerdas.</p>
               </div>
             )}
@@ -657,7 +674,7 @@ export default function AnalyticaAI() {
                 <div className="text-center mb-10 print:mb-6">
                   <h1 className="text-4xl font-black text-[#1E3A5F] uppercase tracking-wider mb-2">Laporan Eksekutif</h1>
                   <div className="inline-block bg-white shadow-sm px-6 py-2 rounded-full border border-slate-200 text-slate-500 font-medium mt-2">
-                    Dihasilkan oleh Analytica AI • {new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    Dihasilkan oleh AI Automated Data Analyst • {new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
                   </div>
                 </div>
 
@@ -705,24 +722,7 @@ export default function AnalyticaAI() {
       </main>
 
       {/* Floating Action Bar / Export Features */}
-      {fileName && (
-        <div className="fixed bottom-6 right-6 flex flex-col sm:flex-row gap-3 shadow-2xl rounded-2xl p-2 bg-white/90 backdrop-blur-md border border-slate-200 print:hidden z-40 animate-in slide-in-from-bottom-10 duration-500">
-          <button 
-            onClick={exportPNG}
-            className="flex items-center justify-center px-6 py-3 border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-bold rounded-xl transition-colors"
-          >
-            <ImageIcon className="w-5 h-5 mr-2" />
-            Ekspor Grafik (PNG)
-          </button>
-          <button 
-            onClick={printPDF}
-            className="flex items-center justify-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-blue-600/30"
-          >
-            <Download className="w-5 h-5 mr-2" />
-            Unduh Laporan (PDF)
-          </button>
-        </div>
-      )}
+      {/* Ekspor dipindah ke atas */}
     </div>
   );
 }
