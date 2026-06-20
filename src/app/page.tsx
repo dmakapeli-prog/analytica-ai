@@ -529,7 +529,6 @@ export default function AnalyticaAI() {
                             dataKey="value"
                             nameKey="name"
                             label={({ name, percent }) => `${name} ${(percent * 100).toFixed(1)}%`}
-                            labelStyle={{ fontSize: '13px', fontWeight: 'bold', fill: '#1E3A5F' }}
                             labelLine={{ stroke: '#cbd5e1', strokeWidth: 2 }}
                           >
                             {visData.pieData.map((entry, index) => (
