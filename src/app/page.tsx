@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import { 
@@ -10,7 +10,7 @@ import {
 import html2canvas from 'html2canvas-pro';
 import { 
   ShieldCheck, BarChart2, FileText, Download, Image as ImageIcon, 
-  UploadCloud, Sparkles, Loader2, AlertTriangle, CheckCircle
+  UploadCloud, Sparkles, Loader2, AlertTriangle, CheckCircle, Info, Database, List
 } from 'lucide-react';
 
 type Tab = 'audit' | 'visualisasi' | 'laporan';
@@ -70,7 +70,6 @@ export default function AnalyticaAI() {
     setRawData(data);
     setTotalRows(data.length);
 
-    // --- AUDIT PROSES ---
     let problemCount = 0;
     const logs: AuditLog[] = cols.map((col, idx) => {
       let emptyCount = 0;
@@ -79,7 +78,7 @@ export default function AnalyticaAI() {
           emptyCount++;
         }
       });
-      if (emptyCount > 0) problemCount += emptyCount; // simple problem tracking
+      if (emptyCount > 0) problemCount += emptyCount;
 
       return {
         no: idx + 1,
@@ -89,7 +88,6 @@ export default function AnalyticaAI() {
       };
     });
 
-    // Hitung baris bermasalah (aproksimasi sederhana: tiap cell kosong = 1 masalah max sejumlah baris)
     let rowsWithIssues = 0;
     data.forEach(row => {
       const hasEmpty = cols.some(c => row[c] === null || row[c] === undefined || row[c] === '');
@@ -101,17 +99,11 @@ export default function AnalyticaAI() {
     setHealthScore(health);
     setAuditLogs(logs);
 
-    // --- VISUALISASI PROSES (Auto-Detect) ---
-    // Logika Deteksi:
-    // Kolom Periode: mengandung kata "tanggal", "date", "bulan", "tahun", "period"
-    // Kolom Kategori: kolom string dengan unique values < 20% dari total data atau <= 10 unique values
-    // Kolom Numerik: untuk values
-    
     let dateCol = cols.find(c => c.toLowerCase().match(/tanggal|date|bulan|month|tahun|year|periode|waktu/));
     let catCol = cols.find(c => {
       if (c === dateCol) return false;
       const uniques = new Set(data.map(r => r[c])).size;
-      return uniques <= 15 && uniques > 1; // kategori
+      return uniques <= 15 && uniques > 1;
     });
     
     let numCol = cols.find(c => typeof data[0][c] === 'number');
@@ -119,31 +111,29 @@ export default function AnalyticaAI() {
     const newVis: VisualisasiData = { tipe: 'none' };
     
     if (dateCol) {
-      // Aggregate for Bar Chart
       const agg: Record<string, number> = {};
       data.forEach(r => {
         const key = String(r[dateCol]);
         const val = numCol ? Number(r[numCol]) || 1 : 1;
         agg[key] = (agg[key] || 0) + val;
       });
-      newVis.barData = Object.entries(agg).map(([k, v]) => ({ name: k, value: v })).slice(0, 20); // max 20
+      newVis.barData = Object.entries(agg).map(([k, v]) => ({ name: k, value: v })).slice(0, 20);
       newVis.barXKey = dateCol;
       newVis.tipe = 'bar';
     }
     
     if (catCol) {
-      // Aggregate for Pie Chart
       const agg: Record<string, number> = {};
       data.forEach(r => {
         const key = String(r[catCol]);
         const val = numCol ? Number(r[numCol]) || 1 : 1;
         agg[key] = (agg[key] || 0) + val;
       });
-      newVis.pieData = Object.entries(agg).map(([k, v]) => ({ name: k, value: v })).slice(0, 10); // max 10
+      newVis.pieData = Object.entries(agg).map(([k, v]) => ({ name: k, value: v })).slice(0, 10);
       newVis.pieNameKey = catCol;
       newVis.pieValueKey = "value";
-      newVis.tipe = dateCol ? 'bar' : 'pie'; // if both, we render both later
-      if (dateCol) newVis.tipe = 'bar'; // just to denote it has data
+      newVis.tipe = dateCol ? 'bar' : 'pie';
+      if (dateCol) newVis.tipe = 'bar';
     }
     
     setVisData(newVis);
@@ -205,7 +195,6 @@ export default function AnalyticaAI() {
   const generateReport = async () => {
     setIsGeneratingReport(true);
     
-    // Siapkan ringkasan untuk API
     const summary = `
       File: ${fileName}
       Total Baris: ${totalRows}
@@ -226,7 +215,6 @@ export default function AnalyticaAI() {
       const data = await res.json();
       if (data.error) throw new Error(data.error);
 
-      // Pisahkan output teks menjadi 3 bagian sederhana berdasarkan pola (1) (2) (3)
       const text = data.report as string;
       const p1Match = text.match(/(?:\(1\)|1\.|Ringkasan Utama)[\s\S]*?(?=(?:\(2\)|2\.|Temuan dan Anomali))/i);
       const p2Match = text.match(/(?:\(2\)|2\.|Temuan dan Anomali)[\s\S]*?(?=(?:\(3\)|3\.|Saran Tindakan))/i);
@@ -262,19 +250,21 @@ export default function AnalyticaAI() {
   // Render Landing Page
   if (!fileName && !isParsing) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 font-sans">
-        <div className="text-center mb-10 max-w-2xl">
-          <h1 className="text-4xl md:text-5xl font-extrabold text-blue-600 mb-4 flex items-center justify-center">
-            <BarChart2 className="w-12 h-12 mr-3" />
+      <div className="min-h-screen bg-gradient-to-br from-[#EFF6FF] to-[#F0FDFA] flex flex-col items-center justify-center p-4 font-sans">
+        <div className="text-center mb-12 max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="bg-blue-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm border border-blue-200">
+            <BarChart2 className="w-10 h-10 text-blue-600" />
+          </div>
+          <h1 className="text-4xl md:text-6xl font-black text-[#1E3A5F] mb-4 tracking-tight">
             Analytica AI
           </h1>
-          <p className="text-slate-600 text-lg">
-            Unggah file spreadsheet Anda dan biarkan AI menganalisisnya secara otomatis
+          <p className="text-slate-500 text-lg md:text-xl font-medium">
+            Unggah file spreadsheet Anda dan biarkan AI menganalisis data secara otomatis
           </p>
         </div>
 
         <div 
-          className="w-full max-w-2xl bg-white border-2 border-dashed border-blue-300 rounded-xl p-12 text-center shadow-sm hover:bg-blue-50 transition-colors cursor-pointer"
+          className="w-full max-w-2xl bg-white border-2 border-dashed border-blue-400 rounded-2xl p-16 text-center shadow-xl shadow-blue-900/5 hover:bg-blue-50/50 hover:border-blue-500 hover:scale-[1.01] transition-all cursor-pointer group mb-10 animate-in fade-in zoom-in-95 duration-500"
           onDragOver={(e) => e.preventDefault()}
           onDrop={handleDrop}
           onClick={() => document.getElementById('fileUpload')?.click()}
@@ -286,13 +276,33 @@ export default function AnalyticaAI() {
             className="hidden"
             onChange={handleFileInput}
           />
-          <div className="flex justify-center mb-4 text-blue-500">
-            <UploadCloud className="w-16 h-16" />
+          <div className="flex justify-center mb-6 text-blue-500 group-hover:text-blue-600 transition-colors">
+            <div className="bg-blue-50 p-4 rounded-full group-hover:bg-blue-100 transition-colors">
+              <UploadCloud className="w-12 h-12" />
+            </div>
           </div>
-          <h3 className="text-xl font-bold text-slate-800 mb-2">Seret & Lepas File ke Sini</h3>
-          <p className="text-slate-500">atau klik untuk memilih file</p>
+          <h3 className="text-2xl font-bold text-[#1E3A5F] mb-2">Klik atau seret file ke sini</h3>
+          <p className="text-slate-500 font-medium">Mendukung: .xlsx, .xls, .csv</p>
         </div>
-        <p className="mt-6 text-sm text-slate-400">Mendukung format: Excel (.xlsx, .xls) dan CSV (.csv)</p>
+        
+        {/* Feature Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl w-full px-4 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
+          <div className="bg-white/80 backdrop-blur p-6 rounded-2xl border border-blue-100 shadow-sm flex flex-col items-center text-center">
+            <ShieldCheck className="w-8 h-8 text-blue-500 mb-3" />
+            <h4 className="font-bold text-[#1E3A5F] mb-2">Audit Data Otomatis</h4>
+            <p className="text-sm text-slate-500">Deteksi dan bersihkan data kotor secara instan</p>
+          </div>
+          <div className="bg-white/80 backdrop-blur p-6 rounded-2xl border border-teal-100 shadow-sm flex flex-col items-center text-center">
+            <BarChart2 className="w-8 h-8 text-teal-500 mb-3" />
+            <h4 className="font-bold text-[#1E3A5F] mb-2">Visualisasi Cerdas</h4>
+            <p className="text-sm text-slate-500">Grafik otomatis yang menyesuaikan jenis data Anda</p>
+          </div>
+          <div className="bg-white/80 backdrop-blur p-6 rounded-2xl border border-indigo-100 shadow-sm flex flex-col items-center text-center">
+            <FileText className="w-8 h-8 text-indigo-500 mb-3" />
+            <h4 className="font-bold text-[#1E3A5F] mb-2">Laporan AI</h4>
+            <p className="text-sm text-slate-500">Narasi eksekutif profesional siap cetak</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -301,105 +311,133 @@ export default function AnalyticaAI() {
   if (isParsing) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center font-sans">
-        <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
-        <h2 className="text-xl font-semibold text-slate-700">Membaca data Anda...</h2>
+        <Loader2 className="w-16 h-16 text-blue-600 animate-spin mb-6" />
+        <h2 className="text-2xl font-bold text-[#1E3A5F]">Membaca struktur data Anda...</h2>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans pb-20 print:bg-white print:pb-0">
+    <div className="min-h-screen bg-slate-50 font-sans pb-24 print:bg-white print:pb-0">
       
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-10 print:hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex items-center space-x-2">
-            <BarChart2 className="w-8 h-8 text-blue-600" />
-            <span className="text-xl font-bold text-slate-800">Analytica AI</span>
+      {/* Navbar */}
+      <header className="bg-white shadow-sm border-b border-slate-100 sticky top-0 z-30 print:hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="bg-blue-600 p-1.5 rounded-lg">
+              <BarChart2 className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xl font-black text-blue-600 tracking-tight">Analytica AI</span>
           </div>
-          <div className="bg-slate-100 px-4 py-2 rounded-full text-sm font-medium text-slate-600 flex items-center">
-            <FileText className="w-4 h-4 mr-2 text-teal-500" />
-            File: <span className="font-bold text-slate-800 ml-1">{fileName}</span>
+          <div className="bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-full text-xs font-bold text-blue-600 flex items-center shadow-sm">
+            <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+            Powered by Claude AI
           </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 flex space-x-6 border-b border-slate-200">
-          <button 
-            onClick={() => setActiveTab('audit')}
-            className={`pb-3 px-1 border-b-2 font-semibold text-sm transition-colors flex items-center ${activeTab === 'audit' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-          >
-            <ShieldCheck className="w-4 h-4 mr-2" /> Audit Data
-          </button>
-          <button 
-            onClick={() => setActiveTab('visualisasi')}
-            className={`pb-3 px-1 border-b-2 font-semibold text-sm transition-colors flex items-center ${activeTab === 'visualisasi' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-          >
-            <BarChart2 className="w-4 h-4 mr-2" /> Visualisasi
-          </button>
-          <button 
-            onClick={() => setActiveTab('laporan')}
-            className={`pb-3 px-1 border-b-2 font-semibold text-sm transition-colors flex items-center ${activeTab === 'laporan' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-          >
-            <FileText className="w-4 h-4 mr-2" /> Laporan AI
-          </button>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 print:p-0 print:m-0">
         
+        {/* Dashboard Header & Tabs */}
+        <div className="mb-8 print:hidden">
+          <div className="flex items-center justify-center mb-6">
+            <div className="bg-slate-200 border border-slate-300 px-5 py-2 rounded-full text-sm font-semibold text-slate-700 flex items-center shadow-inner">
+              <Database className="w-4 h-4 mr-2 text-slate-500" />
+              File Aktif: <span className="ml-2 text-slate-900">{fileName}</span>
+            </div>
+          </div>
+
+          <div className="flex justify-center">
+            <div className="inline-flex bg-white shadow-sm border border-slate-200 p-1.5 rounded-full space-x-1">
+              <button 
+                onClick={() => setActiveTab('audit')}
+                className={`flex items-center px-6 py-2.5 rounded-full text-sm font-bold transition-all ${activeTab === 'audit' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
+              >
+                <ShieldCheck className="w-4 h-4 mr-2" /> Audit Data
+              </button>
+              <button 
+                onClick={() => setActiveTab('visualisasi')}
+                className={`flex items-center px-6 py-2.5 rounded-full text-sm font-bold transition-all ${activeTab === 'visualisasi' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
+              >
+                <BarChart2 className="w-4 h-4 mr-2" /> Visualisasi
+              </button>
+              <button 
+                onClick={() => setActiveTab('laporan')}
+                className={`flex items-center px-6 py-2.5 rounded-full text-sm font-bold transition-all ${activeTab === 'laporan' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
+              >
+                <FileText className="w-4 h-4 mr-2" /> Laporan AI
+              </button>
+            </div>
+          </div>
+        </div>
+        
         {/* TAB 1: AUDIT DATA */}
         {activeTab === 'audit' && (
-          <div className="space-y-6 animate-in fade-in duration-500 print:block">
-            <h2 className="text-2xl font-bold text-slate-800 mb-6 print:hidden">Ringkasan Audit Data</h2>
+          <div className="space-y-8 animate-in fade-in duration-500 print:block">
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-100">
-                <p className="text-sm font-medium text-slate-500 mb-1">Total Baris Data</p>
-                <p className="text-3xl font-bold text-slate-800">{totalRows.toLocaleString('id-ID')}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
+                <div className="bg-blue-50 p-3 rounded-full mb-4 text-blue-600">
+                  <List className="w-8 h-8" />
+                </div>
+                <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">Total Baris</p>
+                <p className="text-4xl font-black text-[#1E3A5F]">{totalRows.toLocaleString('id-ID')}</p>
               </div>
-              <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-100">
-                <p className="text-sm font-medium text-slate-500 mb-1">Jumlah Kolom</p>
-                <p className="text-3xl font-bold text-slate-800">{columns.length}</p>
+              
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
+                <div className="bg-teal-50 p-3 rounded-full mb-4 text-teal-600">
+                  <Database className="w-8 h-8" />
+                </div>
+                <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">Jumlah Kolom</p>
+                <p className="text-4xl font-black text-[#1E3A5F]">{columns.length}</p>
               </div>
-              <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-100">
-                <p className="text-sm font-medium text-slate-500 mb-1">Baris Bermasalah</p>
-                <p className="text-3xl font-bold text-red-500">{problematicRows.toLocaleString('id-ID')}</p>
+              
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
+                <div className="bg-purple-50 p-3 rounded-full mb-4 text-purple-600">
+                  <AlertTriangle className="w-8 h-8" />
+                </div>
+                <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">Baris Bermasalah</p>
+                <p className="text-4xl font-black text-purple-600">{problematicRows.toLocaleString('id-ID')}</p>
               </div>
-              <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-100">
-                <p className="text-sm font-medium text-slate-500 mb-1">Tingkat Kesehatan Data</p>
-                <p className="text-3xl font-bold text-teal-500">{healthScore}%</p>
+              
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
+                <div className="bg-green-50 p-3 rounded-full mb-4 text-green-600">
+                  <CheckCircle className="w-8 h-8" />
+                </div>
+                <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">Kesehatan Data</p>
+                <p className="text-4xl font-black text-green-500">{healthScore}%</p>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden mt-8">
-              <div className="px-6 py-4 border-b border-slate-100">
-                <h3 className="text-lg font-bold text-slate-800">Tabel Log Pemeriksaan</h3>
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="px-6 py-5 bg-white border-b border-slate-200 flex items-center">
+                <ShieldCheck className="w-5 h-5 text-blue-600 mr-2" />
+                <h3 className="text-lg font-bold text-[#1E3A5F]">Tabel Log Pemeriksaan</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-slate-50 text-slate-500 text-sm">
-                      <th className="px-6 py-3 font-semibold border-b border-slate-200">No</th>
-                      <th className="px-6 py-3 font-semibold border-b border-slate-200">Nama Kolom</th>
-                      <th className="px-6 py-3 font-semibold border-b border-slate-200">Jumlah Nilai Kosong</th>
-                      <th className="px-6 py-3 font-semibold border-b border-slate-200">Status</th>
+                    <tr className="bg-blue-50 text-blue-900 text-sm">
+                      <th className="px-6 py-4 font-bold">No</th>
+                      <th className="px-6 py-4 font-bold">Nama Kolom</th>
+                      <th className="px-6 py-4 font-bold">Jumlah Nilai Kosong</th>
+                      <th className="px-6 py-4 font-bold">Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {auditLogs.map((log) => (
-                      <tr key={log.no} className="hover:bg-slate-50/50">
-                        <td className="px-6 py-4 text-sm text-slate-600 border-b border-slate-100">{log.no}</td>
-                        <td className="px-6 py-4 text-sm font-medium text-slate-800 border-b border-slate-100">{log.namaKolom}</td>
-                        <td className="px-6 py-4 text-sm text-slate-600 border-b border-slate-100">{log.jumlahKosong}</td>
+                      <tr key={log.no} className="even:bg-slate-50 odd:bg-white hover:bg-blue-50/30 transition-colors">
+                        <td className="px-6 py-4 text-sm text-slate-500 border-b border-slate-100">{log.no}</td>
+                        <td className="px-6 py-4 text-sm font-bold text-[#1E3A5F] border-b border-slate-100">{log.namaKolom}</td>
+                        <td className="px-6 py-4 text-sm font-medium text-slate-600 border-b border-slate-100">{log.jumlahKosong}</td>
                         <td className="px-6 py-4 border-b border-slate-100">
                           {log.status === 'Bersih' ? (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                              <CheckCircle className="w-3 h-3 mr-1" /> Bersih
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                              <CheckCircle className="w-3.5 h-3.5 mr-1" /> Bersih
                             </span>
                           ) : (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
-                              <AlertTriangle className="w-3 h-3 mr-1" /> Perlu Perhatian
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
+                              <AlertTriangle className="w-3.5 h-3.5 mr-1" /> Perlu Perhatian
                             </span>
                           )}
                         </td>
@@ -411,96 +449,97 @@ export default function AnalyticaAI() {
             </div>
 
             {/* Notification Box */}
-            {auditLogs.filter(l => l.jumlahKosong > 0).length > 0 ? (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start mt-6">
-                <Sparkles className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
-                <p className="text-sm text-blue-800 leading-relaxed">
-                  AI mendeteksi adanya baris data kosong pada kolom {auditLogs.filter(l => l.jumlahKosong > 0).map(l => `[${l.namaKolom}]`).join(', ')}. Walaupun data kotor telah teridentifikasi, untuk tujuan analitik otomatis, AI akan menyesuaikan perhitungannya dengan mengabaikan nilai kosong (null) tersebut agar grafik tetap relevan.
+            <div className="bg-blue-600 text-white rounded-2xl p-5 flex items-start shadow-md">
+              <Info className="w-6 h-6 mt-0.5 mr-4 flex-shrink-0 text-blue-200" />
+              {auditLogs.filter(l => l.jumlahKosong > 0).length > 0 ? (
+                <p className="text-base leading-relaxed font-medium">
+                  <strong className="text-white">Notifikasi AI:</strong> Terdeteksi adanya baris data kosong pada kolom {auditLogs.filter(l => l.jumlahKosong > 0).map(l => `[${l.namaKolom}]`).join(', ')}. Walaupun data kotor telah teridentifikasi, untuk tujuan analitik otomatis, AI akan menyesuaikan perhitungannya dengan mengabaikan nilai kosong tersebut agar grafik tetap relevan.
                 </p>
-              </div>
-            ) : (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start mt-6">
-                <Sparkles className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
-                <p className="text-sm text-blue-800 leading-relaxed">
-                  Struktur data Anda terlihat sangat rapi dan bersih. Tidak terdeteksi adanya data yang kosong atau rusak. AI siap memvisualisasikan data Anda secara optimal!
+              ) : (
+                <p className="text-base leading-relaxed font-medium">
+                  <strong className="text-white">Notifikasi AI:</strong> Struktur data Anda terlihat sangat rapi dan bersih. Tidak terdeteksi adanya data yang kosong atau rusak. AI siap memvisualisasikan data Anda secara optimal!
                 </p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
 
         {/* TAB 2: VISUALISASI */}
         {activeTab === 'visualisasi' && (
           <div className="space-y-8 animate-in fade-in duration-500 print:block" ref={chartRef}>
-            <h2 className="text-2xl font-bold text-slate-800 print:hidden mb-2">Visualisasi Otomatis</h2>
             
             {(!visData.barData && !visData.pieData) ? (
-              <div className="bg-white p-10 rounded-xl shadow-sm border border-slate-200 text-center">
-                <AlertTriangle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-slate-800 mb-2">Visualisasi Tidak Tersedia</h3>
-                <p className="text-slate-500">Data tidak memiliki kolom periode atau kategori yang dapat divisualisasikan secara otomatis.</p>
+              <div className="bg-white p-16 rounded-3xl shadow-sm border border-slate-200 text-center">
+                <AlertTriangle className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                <h3 className="text-2xl font-bold text-[#1E3A5F] mb-2">Visualisasi Tidak Tersedia</h3>
+                <p className="text-slate-500 text-lg">Data tidak memiliki kolom periode atau kategori yang dapat divisualisasikan secara otomatis.</p>
               </div>
             ) : (
-              <div className="space-y-8">
-                {/* Render Bar Chart if available */}
+              <div className="space-y-10">
+                {/* Render Bar Chart */}
                 {visData.barData && visData.barXKey && (
-                  <div className="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-slate-200">
-                    <h3 className="text-lg font-bold text-slate-800 mb-6 text-center">
-                      Distribusi Frekuensi Berdasarkan {visData.barXKey}
-                    </h3>
-                    <div className="h-[400px] w-full">
+                  <div className="bg-white p-8 sm:p-10 rounded-3xl shadow-md border border-slate-100">
+                    <div className="mb-8 border-b-2 border-blue-100 pb-4 inline-block">
+                      <h3 className="text-2xl font-black text-[#1E3A5F]">
+                        Distribusi Frekuensi Berdasarkan {visData.barXKey}
+                      </h3>
+                    </div>
+                    <div className="h-[450px] w-full mt-4">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={visData.barData} margin={{ top: 20, right: 30, left: 20, bottom: 50 }}>
+                        <BarChart data={visData.barData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                           <XAxis 
                             dataKey="name" 
                             axisLine={false} 
                             tickLine={false} 
-                            tick={{ fill: '#64748b', fontSize: 12 }} 
+                            tick={{ fill: '#64748b', fontSize: 13, fontWeight: 600 }} 
                             angle={-45} 
                             textAnchor="end"
                           />
-                          <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
+                          <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontWeight: 600 }} />
                           <Tooltip 
-                            cursor={{ fill: '#f8fafc' }} 
-                            contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
+                            cursor={{ fill: '#f1f5f9' }} 
+                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)', padding: '12px 16px', fontWeight: 'bold', color: '#1E3A5F' }} 
                           />
-                          <Bar dataKey="value" name="Jumlah" fill="#2563EB" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="value" name="Jumlah" fill="#2563EB" radius={[6, 6, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
                 )}
 
-                {/* Render Pie Chart if available */}
+                {/* Render Pie Chart */}
                 {visData.pieData && visData.pieNameKey && (
-                  <div className="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-slate-200">
-                    <h3 className="text-lg font-bold text-slate-800 mb-6 text-center">
-                      Proporsi Distribusi Kategori ({visData.pieNameKey})
-                    </h3>
-                    <div className="h-[400px] w-full">
+                  <div className="bg-white p-8 sm:p-10 rounded-3xl shadow-md border border-slate-100">
+                    <div className="mb-8 border-b-2 border-teal-100 pb-4 inline-block">
+                      <h3 className="text-2xl font-black text-[#1E3A5F]">
+                        Proporsi Distribusi Kategori ({visData.pieNameKey})
+                      </h3>
+                    </div>
+                    <div className="h-[450px] w-full mt-4">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
                             data={visData.pieData}
                             cx="50%"
                             cy="50%"
-                            innerRadius={80}
-                            outerRadius={130}
-                            paddingAngle={5}
+                            innerRadius={90}
+                            outerRadius={150}
+                            paddingAngle={4}
                             dataKey="value"
                             nameKey="name"
-                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                            labelLine={false}
+                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(1)}%`}
+                            labelStyle={{ fontSize: '13px', fontWeight: 'bold', fill: '#1E3A5F' }}
+                            labelLine={{ stroke: '#cbd5e1', strokeWidth: 2 }}
                           >
                             {visData.pieData.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                             ))}
                           </Pie>
                           <Tooltip 
-                            contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
+                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)', padding: '12px 16px', fontWeight: 'bold', color: '#1E3A5F' }} 
                           />
-                          <Legend verticalAlign="bottom" height={36} />
+                          <Legend verticalAlign="bottom" height={40} wrapperStyle={{ fontWeight: '600', color: '#475569' }} />
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
@@ -514,67 +553,79 @@ export default function AnalyticaAI() {
         {/* TAB 3: LAPORAN AI */}
         {activeTab === 'laporan' && (
           <div className="space-y-6 animate-in fade-in duration-500 print:block">
-            <h2 className="text-2xl font-bold text-slate-800 print:hidden mb-4">Laporan Eksekutif AI</h2>
             
             {!reportParts && !isGeneratingReport && (
-              <div className="bg-white p-12 rounded-xl shadow-sm border border-slate-200 text-center print:hidden">
-                <Sparkles className="w-16 h-16 text-teal-500 mx-auto mb-6" />
-                <h3 className="text-xl font-bold text-slate-800 mb-2">Laporan Belum Dibuat</h3>
-                <p className="text-slate-500 mb-8 max-w-md mx-auto">
-                  Analytica AI akan membaca metrik dan pola dari data Anda, lalu menyusun laporan naratif formal secara instan menggunakan model AI terkini.
+              <div className="bg-white p-16 rounded-3xl shadow-sm border border-slate-200 text-center print:hidden">
+                <div className="bg-gradient-to-br from-blue-100 to-teal-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                  <FileText className="w-12 h-12 text-blue-600" />
+                </div>
+                <h3 className="text-3xl font-black text-[#1E3A5F] mb-4">Laporan Eksekutif AI</h3>
+                <p className="text-slate-500 mb-10 max-w-xl mx-auto text-lg">
+                  Analytica AI akan membaca metrik dan pola dari keseluruhan data Anda, lalu menyusun laporan naratif eksekutif secara instan yang siap untuk dipresentasikan.
                 </p>
                 <button 
                   onClick={generateReport}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center mx-auto"
+                  className="bg-gradient-to-r from-blue-600 to-teal-500 hover:from-blue-700 hover:to-teal-600 text-white font-bold py-4 px-10 rounded-xl transition-all hover:scale-105 shadow-lg shadow-blue-600/30 flex items-center justify-center mx-auto text-lg w-full sm:w-auto"
                 >
-                  <Sparkles className="w-5 h-5 mr-2" />
+                  <Sparkles className="w-6 h-6 mr-3" />
                   Generate Laporan AI
                 </button>
               </div>
             )}
 
             {isGeneratingReport && (
-              <div className="bg-white p-12 rounded-xl shadow-sm border border-slate-200 text-center print:hidden">
-                <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-slate-800">Analytica AI sedang menganalisis data Anda...</h3>
-                <p className="text-slate-500 mt-2">Menyusun ringkasan, menemukan anomali, dan merumuskan saran tindakan.</p>
+              <div className="bg-white p-16 rounded-3xl shadow-sm border border-slate-200 text-center print:hidden">
+                <Loader2 className="w-16 h-16 text-blue-600 animate-spin mx-auto mb-6" />
+                <h3 className="text-2xl font-bold text-[#1E3A5F]">Analytica AI sedang menganalisis...</h3>
+                <p className="text-slate-500 mt-2 text-lg">Mengekstraksi wawasan, menemukan anomali, dan merumuskan saran tindakan cerdas.</p>
               </div>
             )}
 
             {reportParts && !isGeneratingReport && (
-              <div className="bg-white p-8 sm:p-12 rounded-xl shadow-sm border border-slate-200 print:border-none print:shadow-none print:p-0">
-                <div className="text-center mb-10 border-b border-slate-200 pb-6">
-                  <h1 className="text-3xl font-extrabold text-slate-900 uppercase tracking-wide mb-2">Laporan Eksekutif</h1>
-                  <p className="text-slate-500">Dihasilkan oleh Analytica AI • {new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+              <div className="bg-transparent print:bg-white print:p-0">
+                <div className="text-center mb-10 print:mb-6">
+                  <h1 className="text-4xl font-black text-[#1E3A5F] uppercase tracking-wider mb-2">Laporan Eksekutif</h1>
+                  <div className="inline-block bg-white shadow-sm px-6 py-2 rounded-full border border-slate-200 text-slate-500 font-medium mt-2">
+                    Dihasilkan oleh Analytica AI • {new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
+                  </div>
                 </div>
 
-                <div className="space-y-10">
-                  <section>
-                    <h2 className="text-xl font-bold text-blue-800 mb-4 flex items-center border-l-4 border-blue-600 pl-3">
-                      1. Ringkasan Utama
-                    </h2>
-                    <div className="text-slate-700 leading-relaxed space-y-4 whitespace-pre-wrap">
+                <div className="space-y-8">
+                  {/* Bagian 1 */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:border-none print:shadow-none">
+                    <div className="bg-blue-600 px-8 py-4">
+                      <h2 className="text-xl font-bold text-white flex items-center">
+                        <FileText className="w-6 h-6 mr-3 text-blue-200" /> Ringkasan Utama
+                      </h2>
+                    </div>
+                    <div className="p-8 text-slate-700 leading-relaxed text-lg whitespace-pre-wrap font-medium">
                       {reportParts.p1}
                     </div>
-                  </section>
+                  </div>
 
-                  <section>
-                    <h2 className="text-xl font-bold text-blue-800 mb-4 flex items-center border-l-4 border-teal-500 pl-3">
-                      2. Temuan dan Anomali
-                    </h2>
-                    <div className="text-slate-700 leading-relaxed space-y-4 whitespace-pre-wrap">
+                  {/* Bagian 2 */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:border-none print:shadow-none">
+                    <div className="bg-amber-500 px-8 py-4">
+                      <h2 className="text-xl font-bold text-white flex items-center">
+                        <AlertTriangle className="w-6 h-6 mr-3 text-amber-100" /> Temuan dan Anomali
+                      </h2>
+                    </div>
+                    <div className="p-8 text-slate-700 leading-relaxed text-lg whitespace-pre-wrap font-medium">
                       {reportParts.p2}
                     </div>
-                  </section>
+                  </div>
 
-                  <section>
-                    <h2 className="text-xl font-bold text-blue-800 mb-4 flex items-center border-l-4 border-indigo-500 pl-3">
-                      3. Saran Tindakan
-                    </h2>
-                    <div className="text-slate-700 leading-relaxed space-y-4 whitespace-pre-wrap bg-blue-50/50 p-6 rounded-lg border border-blue-100">
+                  {/* Bagian 3 */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:border-none print:shadow-none">
+                    <div className="bg-green-600 px-8 py-4">
+                      <h2 className="text-xl font-bold text-white flex items-center">
+                        <ShieldCheck className="w-6 h-6 mr-3 text-green-200" /> Saran Tindakan
+                      </h2>
+                    </div>
+                    <div className="p-8 bg-green-50/30 text-slate-700 leading-relaxed text-lg whitespace-pre-wrap font-medium">
                       {reportParts.p3}
                     </div>
-                  </section>
+                  </div>
                 </div>
               </div>
             )}
@@ -583,24 +634,24 @@ export default function AnalyticaAI() {
       </main>
 
       {/* Floating Action Bar / Export Features */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] print:hidden z-20">
-        <div className="max-w-7xl mx-auto flex justify-center sm:justify-end space-x-4">
+      {fileName && (
+        <div className="fixed bottom-6 right-6 flex flex-col sm:flex-row gap-3 shadow-2xl rounded-2xl p-2 bg-white/90 backdrop-blur-md border border-slate-200 print:hidden z-40 animate-in slide-in-from-bottom-10 duration-500">
           <button 
             onClick={exportPNG}
-            className="flex items-center px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-colors border border-slate-300"
+            className="flex items-center justify-center px-6 py-3 border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-bold rounded-xl transition-colors"
           >
-            <ImageIcon className="w-5 h-5 mr-2 text-teal-600" />
+            <ImageIcon className="w-5 h-5 mr-2" />
             Ekspor Grafik (PNG)
           </button>
           <button 
             onClick={printPDF}
-            className="flex items-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-sm"
+            className="flex items-center justify-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-blue-600/30"
           >
             <Download className="w-5 h-5 mr-2" />
             Unduh Laporan (PDF)
           </button>
         </div>
-      </div>
+      )}
     </div>
   );
 }
