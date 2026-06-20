@@ -228,9 +228,9 @@ export default function AnalyticaAI() {
 
       // Pisahkan output teks menjadi 3 bagian sederhana berdasarkan pola (1) (2) (3)
       const text = data.report as string;
-      const p1Match = text.match(/(?:\(1\)|1\.|Ringkasan Utama).*?(?=(?:\(2\)|2\.|Temuan dan Anomali))/is);
-      const p2Match = text.match(/(?:\(2\)|2\.|Temuan dan Anomali).*?(?=(?:\(3\)|3\.|Saran Tindakan))/is);
-      const p3Match = text.match(/(?:\(3\)|3\.|Saran Tindakan).*/is);
+      const p1Match = text.match(/(?:\(1\)|1\.|Ringkasan Utama)[\s\S]*?(?=(?:\(2\)|2\.|Temuan dan Anomali))/i);
+      const p2Match = text.match(/(?:\(2\)|2\.|Temuan dan Anomali)[\s\S]*?(?=(?:\(3\)|3\.|Saran Tindakan))/i);
+      const p3Match = text.match(/(?:\(3\)|3\.|Saran Tindakan)[\s\S]*/i);
 
       setReportParts({
         p1: p1Match ? p1Match[0].replace(/(?:\(1\)|1\.|Ringkasan Utama)[:\-]?/i, '').trim() : "Tidak dapat mengekstrak ringkasan utama.",
