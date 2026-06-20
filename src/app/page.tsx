@@ -1,8 +1,8 @@
 "use client"
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
-  BarChart, Bar, LineChart, Line, PieChart, Pie, RadarChart, PolarGrid, 
+  BarChart, Bar, LineChart, Line, RadarChart, PolarGrid, 
   PolarAngleAxis, PolarRadiusAxis, Radar, XAxis, YAxis, CartesianGrid, 
   Tooltip, Legend, ResponsiveContainer, Cell 
 } from 'recharts';
@@ -11,59 +11,109 @@ import html2canvas from 'html2canvas-pro';
 import { 
   Download, FileSpreadsheet, Gamepad2, UploadCloud, 
   Sparkles, TrendingUp, AlertCircle, FileImage, 
-  Trophy, Crosshair, Shield, Zap
+  Lightbulb, Palette, FileText, Target, Activity
 } from 'lucide-react';
 
 // --- MOCK DATA ---
-const monthlyTrendData = [
-  { name: 'Jan', revenue: 4000, cost: 2400 },
-  { name: 'Feb', revenue: 3000, cost: 1398 },
-  { name: 'Mar', revenue: 2000, cost: 9800 },
-  { name: 'Apr', revenue: 2780, cost: 3908 },
-  { name: 'May', revenue: 1890, cost: 4800 },
-  { name: 'Jun', revenue: 2390, cost: 3800 },
+const trendData = [
+  { bulan: 'Jan', pendapatan: 45000, pengeluaran: 28000 },
+  { bulan: 'Feb', pendapatan: 52000, pengeluaran: 30000 },
+  { bulan: 'Mar', pendapatan: 48000, pengeluaran: 25000 },
+  { bulan: 'Apr', pendapatan: 61000, pengeluaran: 32000 },
+  { bulan: 'Mei', pendapatan: 59000, pengeluaran: 35000 },
+  { bulan: 'Jun', pendapatan: 75000, pengeluaran: 40000 },
 ];
 
 const growthData = [
-  { name: 'Q1', users: 1000, active: 800 },
-  { name: 'Q2', users: 2500, active: 1800 },
-  { name: 'Q3', users: 5000, active: 3900 },
-  { name: 'Q4', users: 8500, active: 7000 },
+  { kuartal: 'Q1', pengguna: 12000, aktif: 8500 },
+  { kuartal: 'Q2', pengguna: 25000, aktif: 18000 },
+  { kuartal: 'Q3', pengguna: 48000, aktif: 39000 },
+  { kuartal: 'Q4', pengguna: 82000, aktif: 71000 },
 ];
-
-const proportionData = [
-  { name: 'Product A', value: 400 },
-  { name: 'Product B', value: 300 },
-  { name: 'Product C', value: 300 },
-  { name: 'Product D', value: 200 },
-];
-const COLORS = ['#10b981', '#14b8a6', '#6366f1', '#f59e0b']; // emerald, teal, indigo, amber
 
 const playerStatsData = [
-  { subject: 'Aim', A: 120, fullMark: 150 },
-  { subject: 'Movement', A: 98, fullMark: 150 },
-  { subject: 'Utility', A: 86, fullMark: 150 },
-  { subject: 'Teamwork', A: 99, fullMark: 150 },
-  { subject: 'Clutch', A: 85, fullMark: 150 },
-  { subject: 'Eco', A: 65, fullMark: 150 },
+  { aspek: 'Akurasi', nilai: 95, max: 100 },
+  { aspek: 'Mobilitas', nilai: 88, max: 100 },
+  { aspek: 'Kerja Sama', nilai: 92, max: 100 },
+  { aspek: 'Visi Peta', nilai: 85, max: 100 },
+  { aspek: 'Agresivitas', nilai: 78, max: 100 },
+  { aspek: 'Bertahan', nilai: 82, max: 100 },
 ];
 
 const kdaData = [
-  { name: 'Faker', K: 12, D: 2, A: 8 },
-  { name: 'Zeus', K: 8, D: 4, A: 10 },
-  { name: 'Oner', K: 5, D: 5, A: 15 },
-  { name: 'Gumayusi', K: 14, D: 1, A: 6 },
-  { name: 'Keria', K: 2, D: 3, A: 20 },
+  { pemain: 'Player 1', Kills: 15, Deaths: 3, Assists: 8 },
+  { pemain: 'Player 2', Kills: 8, Deaths: 5, Assists: 12 },
+  { pemain: 'Player 3', Kills: 4, Deaths: 7, Assists: 18 },
+  { pemain: 'Player 4', Kills: 20, Deaths: 2, Assists: 5 },
+  { pemain: 'Player 5', Kills: 2, Deaths: 6, Assists: 22 },
 ];
 
+type AppMode = 'dokumen' | 'esports';
+type AppTheme = 'modern' | 'cinematic' | 'profesional';
+
 export default function AIInfographicGenerator() {
-  const [mode, setMode] = useState<'admin' | 'esports'>('admin');
+  const [mode, setMode] = useState<AppMode>('dokumen');
+  const [theme, setTheme] = useState<AppTheme>('modern');
   const [file, setFile] = useState<File | null>(null);
+  
+  // Loading States
   const [isProcessing, setIsProcessing] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [showResult, setShowResult] = useState(false);
   
   const dashboardRef = useRef<HTMLDivElement>(null);
+
+  // Theme Configurations
+  const getThemeConfig = () => {
+    switch (theme) {
+      case 'cinematic':
+        return {
+          wrapper: 'bg-zinc-950 text-white selection:bg-cyan-500/30',
+          dashboardBg: 'bg-zinc-950 border border-zinc-800 shadow-[0_0_50px_rgba(6,182,212,0.15)] relative overflow-hidden',
+          card: 'bg-zinc-900/80 backdrop-blur-md border border-zinc-800 hover:border-cyan-500/50 transition-all duration-300 shadow-lg',
+          accent1: '#06b6d4', // Cyan
+          accent2: '#8b5cf6', // Purple
+          accent3: '#ef4444', // Red for KDA
+          textMain: 'text-white',
+          textSub: 'text-zinc-400',
+          gridLine: '#27272a',
+          glowEffect: 'shadow-[0_0_15px_rgba(6,182,212,0.4)]',
+          badgeBg: 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30',
+        };
+      case 'profesional':
+        return {
+          wrapper: 'bg-gray-100 text-gray-900 selection:bg-emerald-500/30',
+          dashboardBg: 'bg-white border-t-4 border-t-slate-800 border-x border-b border-gray-300 shadow-md rounded-none',
+          card: 'bg-white border border-gray-200 shadow-sm rounded-none',
+          accent1: '#0f172a', // Slate 900
+          accent2: '#059669', // Emerald
+          accent3: '#dc2626', // Red
+          textMain: 'text-gray-900',
+          textSub: 'text-gray-600',
+          gridLine: '#e5e7eb',
+          glowEffect: '',
+          badgeBg: 'bg-slate-100 text-slate-800 border border-slate-300 rounded-none',
+        };
+      case 'modern':
+      default:
+        return {
+          wrapper: 'bg-slate-50 text-slate-900 selection:bg-indigo-500/30',
+          dashboardBg: 'bg-white border border-slate-200 shadow-2xl rounded-3xl',
+          card: 'bg-white border border-slate-100 shadow-sm rounded-2xl',
+          accent1: '#6366f1', // Indigo
+          accent2: '#14b8a6', // Teal
+          accent3: '#f43f5e', // Rose
+          textMain: 'text-slate-800',
+          textSub: 'text-slate-500',
+          gridLine: '#f1f5f9',
+          glowEffect: '',
+          badgeBg: 'bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-full',
+        };
+    }
+  };
+
+  const tc = getThemeConfig();
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -71,19 +121,24 @@ export default function AIInfographicGenerator() {
       setIsProcessing(true);
       setShowResult(false);
       setProgress(0);
+      setLoadingStep(1); // 1: Membaca struktur, 2: Menentukan model
       
-      // Mock progress
+      // Mock progress with 2 steps
+      let currentProgress = 0;
       const interval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            setIsProcessing(false);
-            setShowResult(true);
-            return 100;
-          }
-          return prev + 5;
-        });
-      }, 100);
+        currentProgress += 2;
+        setProgress(currentProgress);
+        
+        if (currentProgress === 40) {
+          setLoadingStep(2);
+        }
+        
+        if (currentProgress >= 100) {
+          clearInterval(interval);
+          setIsProcessing(false);
+          setShowResult(true);
+        }
+      }, 50);
     }
   };
 
@@ -93,7 +148,7 @@ export default function AIInfographicGenerator() {
     const image = canvas.toDataURL("image/png");
     const link = document.createElement("a");
     link.href = image;
-    link.download = `Infographic_${mode}_${Date.now()}.png`;
+    link.download = `Infografis_${mode}_${theme}_${Date.now()}.png`;
     link.click();
   };
 
@@ -107,39 +162,50 @@ export default function AIInfographicGenerator() {
       format: [canvas.width, canvas.height]
     });
     pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-    pdf.save(`Infographic_${mode}_${Date.now()}.pdf`);
+    pdf.save(`Infografis_${mode}_${theme}_${Date.now()}.pdf`);
   };
 
   const resetState = () => {
     setFile(null);
     setShowResult(false);
     setProgress(0);
+    setLoadingStep(0);
+  };
+
+  // Switch mode also suggests a theme
+  const changeMode = (newMode: AppMode) => {
+    setMode(newMode);
+    if (newMode === 'esports') setTheme('cinematic');
+    if (newMode === 'dokumen') setTheme('modern');
+    resetState();
   };
 
   return (
-    <div className={`min-h-screen transition-colors duration-500 ${mode === 'esports' ? 'bg-zinc-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
-      {/* Header & Tabs */}
-      <header className={`sticky top-0 z-10 backdrop-blur-md border-b ${mode === 'esports' ? 'border-zinc-800 bg-zinc-950/80' : 'border-slate-200 bg-slate-50/80'}`}>
+    <div className={`min-h-screen transition-colors duration-500 font-sans ${tc.wrapper}`}>
+      {/* Header & Main Tabs */}
+      <header className="sticky top-0 z-20 backdrop-blur-xl border-b border-black/5 dark:border-white/5 bg-inherit/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Sparkles className={`h-6 w-6 ${mode === 'esports' ? 'text-cyan-400' : 'text-indigo-600'}`} />
-            <h1 className="text-xl font-bold tracking-tight">AI DashGen</h1>
+            <Activity className="h-6 w-6 text-indigo-500" />
+            <h1 className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-teal-400">
+              SmartGraph AI
+            </h1>
           </div>
           
-          <div className="flex p-1 space-x-1 rounded-xl bg-slate-200/50 dark:bg-zinc-800/50 border border-slate-300/50 dark:border-zinc-700/50">
+          <div className="flex p-1 space-x-1 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5">
             <button 
-              onClick={() => { setMode('admin'); resetState(); }}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'admin' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              onClick={() => changeMode('dokumen')}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'dokumen' ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'opacity-60 hover:opacity-100'}`}
             >
               <FileSpreadsheet className="h-4 w-4" />
-              <span className="hidden sm:inline">Admin & Office</span>
+              <span className="hidden sm:inline">Analisis Dokumen (Excel/CSV)</span>
             </button>
             <button 
-              onClick={() => { setMode('esports'); resetState(); }}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'esports' ? 'bg-zinc-900 text-cyan-400 shadow-sm ring-1 ring-zinc-700' : 'text-zinc-400 hover:text-zinc-300'}`}
+              onClick={() => changeMode('esports')}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'esports' ? 'bg-white dark:bg-zinc-800 text-cyan-600 dark:text-cyan-400 shadow-sm' : 'opacity-60 hover:opacity-100'}`}
             >
               <Gamepad2 className="h-4 w-4" />
-              <span className="hidden sm:inline">Esports & Game</span>
+              <span className="hidden sm:inline">Analisis Gambar (Esports/Data)</span>
             </button>
           </div>
         </div>
@@ -150,33 +216,38 @@ export default function AIInfographicGenerator() {
         {/* State 1: Upload / Dropzone */}
         {!showResult && (
           <div className="max-w-3xl mx-auto mt-8 sm:mt-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <div className={`text-center mb-8`}>
-              <h2 className={`text-3xl font-extrabold tracking-tight mb-3 ${mode === 'esports' ? 'text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500' : 'text-slate-900'}`}>
-                {mode === 'admin' ? 'Data to Dashboard Generator' : 'Match Vision AI Analyzer'}
+            <div className={`text-center mb-10`}>
+              <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-4">
+                {mode === 'dokumen' ? 'Ubah Data Mentah Menjadi Wawasan' : 'Ekstrak Statistik dari Tangkapan Layar'}
               </h2>
-              <p className={mode === 'esports' ? 'text-zinc-400' : 'text-slate-500'}>
-                {mode === 'admin' ? 'Upload your Spreadsheet (.xlsx, .csv) and let AI uncover the hidden patterns.' : 'Drop a match screenshot (.png, .jpg) and let Vision AI extract player statistics.'}
+              <p className="text-lg opacity-60">
+                {mode === 'dokumen' 
+                  ? 'Unggah file Spreadsheet (.xlsx, .csv) Anda. AI kami akan menganalisis dan memilih visualisasi terbaik secara otomatis.' 
+                  : 'Unggah screenshot hasil pertandingan (.png, .jpg). Vision AI kami akan mengekstrak data KDA dan merangkum performa.'}
               </p>
             </div>
 
-            <div className={`relative group rounded-3xl border-2 border-dashed p-10 sm:p-16 transition-all duration-300 hover:scale-[1.01] ${mode === 'esports' ? 'border-zinc-700 hover:border-cyan-500/50 bg-zinc-900/50 hover:bg-zinc-900/80 shadow-[0_0_15px_rgba(34,211,238,0.05)] hover:shadow-[0_0_30px_rgba(34,211,238,0.15)]' : 'border-slate-300 hover:border-indigo-400 bg-white hover:bg-indigo-50/30 hover:shadow-xl hover:shadow-indigo-100'}`}>
+            <div className={`relative group rounded-3xl border-2 border-dashed p-10 sm:p-20 transition-all duration-300 hover:scale-[1.02] bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 ${mode === 'dokumen' ? 'border-indigo-300 hover:border-indigo-500' : 'border-cyan-300 hover:border-cyan-500'}`}>
               <input 
                 type="file" 
-                accept={mode === 'admin' ? ".csv, .xlsx" : "image/png, image/jpeg"}
+                accept={mode === 'dokumen' ? ".csv, .xlsx" : "image/png, image/jpeg"}
                 onChange={handleFileUpload}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                 disabled={isProcessing}
               />
-              <div className="flex flex-col items-center justify-center space-y-4 text-center">
-                <div className={`p-5 rounded-full ${mode === 'esports' ? 'bg-zinc-800 text-cyan-400 group-hover:text-cyan-300 group-hover:bg-zinc-800' : 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 group-hover:scale-110 transition-transform'}`}>
-                  {mode === 'admin' ? <UploadCloud className="h-10 w-10" /> : <FileImage className="h-10 w-10" />}
+              <div className="flex flex-col items-center justify-center space-y-6 text-center">
+                <div className={`p-6 rounded-full transition-transform group-hover:scale-110 ${mode === 'dokumen' ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400' : 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/50 dark:text-cyan-400'}`}>
+                  {mode === 'dokumen' ? <UploadCloud className="h-12 w-12" /> : <FileImage className="h-12 w-12" />}
                 </div>
                 <div>
-                  <p className="text-lg font-semibold">
-                    Click or drag and drop to upload
+                  <p className="text-xl font-semibold">
+                    Tarik & Lepas file ke area ini
                   </p>
-                  <p className={`text-sm mt-1 ${mode === 'esports' ? 'text-zinc-500' : 'text-slate-500'}`}>
-                    {mode === 'admin' ? 'Supported formats: XLSX, CSV (Max 10MB)' : 'Supported formats: PNG, JPG (Max 5MB)'}
+                  <p className="text-sm mt-2 opacity-60">
+                    atau klik untuk mencari file dari perangkat Anda
+                  </p>
+                  <p className="text-xs mt-4 font-medium opacity-50 uppercase tracking-widest">
+                    {mode === 'dokumen' ? 'Format didukung: XLSX, CSV (Maks 10MB)' : 'Format didukung: PNG, JPG (Maks 5MB)'}
                   </p>
                 </div>
               </div>
@@ -184,21 +255,21 @@ export default function AIInfographicGenerator() {
 
             {/* Processing State */}
             {isProcessing && (
-              <div className="mt-8 space-y-4 animate-in fade-in duration-300">
-                <div className="flex items-center justify-between text-sm font-medium">
-                  <div className="flex items-center space-x-2">
-                    <Sparkles className={`h-4 w-4 animate-pulse ${mode === 'esports' ? 'text-cyan-400' : 'text-indigo-600'}`} />
-                    <span className={mode === 'esports' ? 'text-zinc-300' : 'text-slate-700'}>
-                      {mode === 'admin' 
-                        ? 'AI sedang mendeteksi tren dan anomali data...' 
-                        : 'Vision AI sedang mengekstrak teks, skor, dan data KDA pemain dari gambar...'}
+              <div className="mt-10 space-y-5 animate-in fade-in duration-300">
+                <div className="flex items-center justify-between text-sm font-semibold">
+                  <div className="flex items-center space-x-3">
+                    <Sparkles className={`h-5 w-5 animate-pulse ${mode === 'dokumen' ? 'text-indigo-500' : 'text-cyan-500'}`} />
+                    <span>
+                      {loadingStep === 1 
+                        ? (mode === 'dokumen' ? 'AI sedang membaca struktur data...' : 'Vision AI sedang memindai piksel gambar...') 
+                        : (mode === 'dokumen' ? 'AI menentukan model grafik terbaik untuk data Anda...' : 'AI menstrukturkan data statistik pemain...')}
                     </span>
                   </div>
-                  <span>{progress}%</span>
+                  <span className="font-mono text-lg">{progress}%</span>
                 </div>
-                <div className={`h-2.5 w-full rounded-full overflow-hidden ${mode === 'esports' ? 'bg-zinc-800' : 'bg-slate-200'}`}>
+                <div className="h-3 w-full rounded-full overflow-hidden bg-black/10 dark:bg-white/10">
                   <div 
-                    className={`h-full rounded-full transition-all duration-100 ease-out ${mode === 'esports' ? 'bg-gradient-to-r from-cyan-500 to-blue-500 shadow-[0_0_10px_rgba(6,182,212,0.6)]' : 'bg-gradient-to-r from-indigo-500 to-emerald-400'}`}
+                    className={`h-full transition-all duration-75 ease-linear ${mode === 'dokumen' ? 'bg-gradient-to-r from-indigo-500 to-teal-400' : 'bg-gradient-to-r from-cyan-500 to-blue-500'}`}
                     style={{ width: `${progress}%` }}
                   ></div>
                 </div>
@@ -210,29 +281,42 @@ export default function AIInfographicGenerator() {
         {/* State 2: Dashboard Result */}
         {showResult && (
           <div className="animate-in fade-in zoom-in-95 duration-500 space-y-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-              <div>
-                <h2 className="text-2xl font-bold">
-                  {mode === 'admin' ? 'Business Intelligence Report' : 'Match Performance Analysis'}
-                </h2>
-                <p className={`text-sm ${mode === 'esports' ? 'text-zinc-400' : 'text-slate-500'}`}>
-                  Generated on {new Date().toLocaleDateString()} from {file?.name || 'Uploaded File'}
-                </p>
+            
+            {/* Top Toolbar (Theme Switcher & Export) */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white/50 dark:bg-zinc-900/50 p-4 rounded-2xl backdrop-blur-md border border-black/5 dark:border-white/5">
+              
+              {/* Theme Switcher */}
+              <div className="flex items-center space-x-3">
+                <Palette className="h-5 w-5 opacity-60" />
+                <span className="text-sm font-medium mr-2">Pilih Gaya:</span>
+                <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-lg">
+                  {(['modern', 'cinematic', 'profesional'] as AppTheme[]).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setTheme(t)}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all capitalize ${theme === t ? 'bg-white dark:bg-zinc-800 shadow-sm' : 'opacity-60 hover:opacity-100'}`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="flex space-x-3 w-full sm:w-auto">
+
+              {/* Export Buttons */}
+              <div className="flex space-x-3">
                 <button 
                   onClick={exportPNG}
-                  className={`flex-1 sm:flex-none flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg font-medium transition-all ${mode === 'esports' ? 'bg-zinc-800 hover:bg-zinc-700 text-cyan-400 border border-zinc-700' : 'bg-white hover:bg-slate-50 text-indigo-600 border border-slate-200 shadow-sm'}`}
+                  className="flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
                 >
-                  <Download className="h-4 w-4" />
-                  <span>Export PNG</span>
+                  <FileImage className="h-4 w-4" />
+                  <span>Ekspor PNG</span>
                 </button>
                 <button 
                   onClick={exportPDF}
-                  className={`flex-1 sm:flex-none flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg font-medium text-white transition-all shadow-md ${mode === 'esports' ? 'bg-cyan-600 hover:bg-cyan-500 shadow-cyan-900/20' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20'}`}
+                  className="flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all shadow-md bg-slate-900 hover:bg-slate-800 dark:bg-cyan-600 dark:hover:bg-cyan-500"
                 >
                   <Download className="h-4 w-4" />
-                  <span>Export PDF</span>
+                  <span>Ekspor PDF</span>
                 </button>
               </div>
             </div>
@@ -240,240 +324,205 @@ export default function AIInfographicGenerator() {
             {/* THE DASHBOARD CANVAS */}
             <div 
               ref={dashboardRef} 
-              className={`p-6 sm:p-8 rounded-3xl ${mode === 'esports' ? 'bg-zinc-950 border border-zinc-800 shadow-2xl relative overflow-hidden' : 'bg-white border border-slate-200 shadow-xl'}`}
+              className={`p-6 sm:p-10 transition-all duration-500 ${tc.dashboardBg}`}
             >
-              {/* Esports Neon Accents */}
-              {mode === 'esports' && (
+              {/* Cinematic Background Glow Elements */}
+              {theme === 'cinematic' && (
                 <>
-                  <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-cyan-900/20 blur-[120px] pointer-events-none"></div>
-                  <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-blue-900/20 blur-[120px] pointer-events-none"></div>
+                  <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-cyan-600/10 blur-[100px] pointer-events-none"></div>
+                  <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/10 blur-[100px] pointer-events-none"></div>
                 </>
               )}
 
-              {mode === 'admin' ? (
-                // ADMIN MODE CONTENT
-                <div className="space-y-8">
-                  {/* Top Stats */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="p-6 rounded-2xl bg-indigo-50/50 border border-indigo-100">
-                      <div className="flex items-center space-x-3 text-indigo-600 mb-3">
-                        <TrendingUp className="h-6 w-6" />
-                        <h3 className="font-semibold text-lg">Revenue Growth</h3>
-                      </div>
-                      <p className="text-4xl font-bold text-slate-900">+24.8%</p>
-                      <p className="text-sm text-slate-500 mt-2">Compared to last month</p>
-                    </div>
-                    <div className="p-6 rounded-2xl bg-emerald-50/50 border border-emerald-100">
-                      <div className="flex items-center space-x-3 text-emerald-600 mb-3">
-                        <AlertCircle className="h-6 w-6" />
-                        <h3 className="font-semibold text-lg">Cost Efficiency</h3>
-                      </div>
-                      <p className="text-4xl font-bold text-slate-900">12.3%</p>
-                      <p className="text-sm text-slate-500 mt-2">Reduction in operations</p>
-                    </div>
-                    <div className="p-6 rounded-2xl bg-amber-50/50 border border-amber-100">
-                      <div className="flex items-center space-x-3 text-amber-600 mb-3">
-                        <Sparkles className="h-6 w-6" />
-                        <h3 className="font-semibold text-lg">AI Predictability</h3>
-                      </div>
-                      <p className="text-4xl font-bold text-slate-900">High</p>
-                      <p className="text-sm text-slate-500 mt-2">94% confidence score</p>
+              {/* Header Info Dashboard */}
+              <div className="mb-8 border-b border-black/5 dark:border-white/5 pb-6">
+                <h2 className={`text-3xl font-bold mb-2 ${tc.textMain}`}>
+                  {mode === 'dokumen' ? 'Laporan Intelijen Bisnis' : 'Analisis Performa Pertandingan'}
+                </h2>
+                <p className={`${tc.textSub} flex items-center`}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Sumber data: {file?.name || 'Data_Unggahan.csv'} • Dihasilkan otomatis oleh SmartGraph AI
+                </p>
+              </div>
+
+              {mode === 'dokumen' ? (
+                // --- KONTEN TAB DOKUMEN ---
+                <div className="space-y-8 relative z-10">
+                  
+                  {/* AI SMART SELECTOR NOTE */}
+                  <div className={`p-4 rounded-xl flex items-start space-x-4 border-l-4 border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20 text-indigo-900 dark:text-indigo-200`}>
+                    <Lightbulb className="h-6 w-6 mt-0.5 flex-shrink-0 text-indigo-500" />
+                    <div>
+                      <h4 className="font-bold mb-1">💡 AI Note: Pemilihan Model Grafik</h4>
+                      <p className="text-sm leading-relaxed opacity-90">
+                        Berdasarkan data yang Anda unggah, AI mendeteksi adanya struktur waktu (bulan/kuartal) dan metrik komparatif (Pendapatan vs Pengeluaran). Oleh karena itu, <strong>Bar Chart Terkelompok</strong> adalah pilihan terbaik untuk melihat margin per bulan secara absolut, dan <strong>Line Chart</strong> sangat efektif memproyeksikan lintasan pertumbuhan pengguna.
+                      </p>
                     </div>
                   </div>
 
-                  {/* Charts Row 1 */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 p-6 rounded-2xl bg-white border border-slate-100 shadow-sm">
-                      <h3 className="text-lg font-semibold mb-6 text-slate-800">Monthly Revenue vs Cost</h3>
-                      <div className="h-[300px] w-full">
+                  {/* Charts Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    
+                    {/* Chart 1: Bar Chart */}
+                    <div className={`p-6 ${tc.card}`}>
+                      <h3 className={`text-xl font-bold mb-6 ${tc.textMain}`}>Tren Pendapatan vs Pengeluaran</h3>
+                      <div className="h-[320px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={monthlyTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
-                            <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                            <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
-                            <Bar dataKey="revenue" fill="#6366f1" radius={[4, 4, 0, 0]} name="Revenue" />
-                            <Bar dataKey="cost" fill="#f43f5e" radius={[4, 4, 0, 0]} name="Cost" />
+                          <BarChart data={trendData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={tc.gridLine} />
+                            <XAxis dataKey="bulan" axisLine={false} tickLine={false} tick={{ fill: tc.chartText }} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fill: tc.chartText }} tickFormatter={(val) => `Rp${val/1000}k`} />
+                            <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} contentStyle={{ backgroundColor: theme === 'cinematic' ? '#18181b' : '#fff', borderColor: tc.gridLine, color: tc.textMain, borderRadius: theme === 'profesional' ? '0px' : '12px' }} />
+                            <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                            <Bar dataKey="pendapatan" name="Pendapatan" fill={tc.accent1} radius={theme === 'profesional' ? [0,0,0,0] : [6, 6, 0, 0]} />
+                            <Bar dataKey="pengeluaran" name="Pengeluaran" fill={tc.accent3} radius={theme === 'profesional' ? [0,0,0,0] : [6, 6, 0, 0]} />
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
                     </div>
-                    <div className="p-6 rounded-2xl bg-white border border-slate-100 shadow-sm flex flex-col">
-                      <h3 className="text-lg font-semibold mb-6 text-slate-800">Product Distribution</h3>
-                      <div className="flex-grow h-[300px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={proportionData}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={60}
-                              outerRadius={90}
-                              paddingAngle={5}
-                              dataKey="value"
-                            >
-                              {proportionData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                              ))}
-                            </Pie>
-                            <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                            <Legend iconType="circle" />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Charts Row 2 & AI Insights */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="p-6 rounded-2xl bg-white border border-slate-100 shadow-sm">
-                      <h3 className="text-lg font-semibold mb-6 text-slate-800">User Growth Projection</h3>
-                      <div className="h-[250px] w-full">
+                    {/* Chart 2: Line Chart */}
+                    <div className={`p-6 ${tc.card}`}>
+                      <h3 className={`text-xl font-bold mb-6 ${tc.textMain}`}>Lintasan Pertumbuhan Pengguna</h3>
+                      <div className="h-[320px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
-                            <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                            <Legend iconType="circle" />
-                            <Line type="monotone" dataKey="users" stroke="#10b981" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} name="Total Users" />
-                            <Line type="monotone" dataKey="active" stroke="#14b8a6" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} name="Active Users" />
+                          <LineChart data={growthData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={tc.gridLine} />
+                            <XAxis dataKey="kuartal" axisLine={false} tickLine={false} tick={{ fill: tc.chartText }} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fill: tc.chartText }} />
+                            <Tooltip contentStyle={{ backgroundColor: theme === 'cinematic' ? '#18181b' : '#fff', borderColor: tc.gridLine, color: tc.textMain, borderRadius: theme === 'profesional' ? '0px' : '12px' }} />
+                            <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                            <Line type="monotone" dataKey="pengguna" name="Total Pengguna" stroke={tc.accent1} strokeWidth={4} dot={{ r: 5, strokeWidth: 2, fill: tc.dashboardBg }} activeDot={{ r: 8 }} />
+                            <Line type="monotone" dataKey="aktif" name="Pengguna Aktif" stroke={tc.accent2} strokeWidth={4} dot={{ r: 5, strokeWidth: 2, fill: tc.dashboardBg }} />
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
                     </div>
-                    
-                    <div className="p-8 rounded-2xl bg-slate-900 text-white shadow-lg relative overflow-hidden flex flex-col justify-center">
-                      <div className="absolute top-[-10%] right-[-10%] p-4 opacity-10 pointer-events-none">
-                        <Sparkles className="h-48 w-48" />
+
+                  </div>
+
+                  {/* AI Insight Summary */}
+                  <div className={`p-6 sm:p-8 mt-8 border-l-4 ${theme === 'cinematic' ? 'bg-zinc-900 border-teal-500' : 'bg-slate-50 border-teal-500'} ${theme === 'profesional' ? 'rounded-none' : 'rounded-2xl'}`}>
+                    <div className="flex items-center space-x-3 mb-6">
+                      <div className={`p-2 rounded-lg ${tc.badgeBg}`}>
+                        <Target className="h-6 w-6" />
                       </div>
-                      <div className="relative z-10">
-                        <div className="flex items-center space-x-3 mb-6">
-                          <Sparkles className="h-6 w-6 text-amber-400" />
-                          <h3 className="text-xl font-bold">AI Executive Insights</h3>
-                        </div>
-                        <ul className="space-y-5">
-                          <li className="flex items-start space-x-4">
-                            <div className="mt-1 bg-emerald-500/20 p-1.5 rounded-full"><TrendingUp className="h-4 w-4 text-emerald-400" /></div>
-                            <p className="text-base text-slate-300 leading-relaxed"><strong className="text-white">Q3 Revenue Spike:</strong> Anomali positif terdeteksi pada Q3. Tren ini kemungkinan berlanjut di Q4 jika budget marketing dipertahankan.</p>
-                          </li>
-                          <li className="flex items-start space-x-4">
-                            <div className="mt-1 bg-amber-500/20 p-1.5 rounded-full"><AlertCircle className="h-4 w-4 text-amber-400" /></div>
-                            <p className="text-base text-slate-300 leading-relaxed"><strong className="text-white">Cost Optimization:</strong> Biaya operasional di bulan Maret sangat tinggi. AI merekomendasikan audit vendor logistik.</p>
-                          </li>
-                          <li className="flex items-start space-x-4">
-                            <div className="mt-1 bg-indigo-500/20 p-1.5 rounded-full"><Sparkles className="h-4 w-4 text-indigo-400" /></div>
-                            <p className="text-base text-slate-300 leading-relaxed"><strong className="text-white">Product Strategy:</strong> Product A memimpin proporsi (33%). Fokuskan ekspansi pada produk A dan B untuk meminimalisir risiko.</p>
-                          </li>
-                        </ul>
+                      <h3 className={`text-2xl font-bold ${tc.textMain}`}>Rangkuman Otomatis AI</h3>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="space-y-2">
+                        <div className={`text-sm font-bold uppercase tracking-wider mb-2 ${tc.textSub} flex items-center`}><TrendingUp className="w-4 h-4 mr-2"/> Sorotan Tren</div>
+                        <p className={`text-sm leading-relaxed ${tc.textMain}`}>
+                          Pendapatan terus meningkat secara stabil dari Bulan Maret hingga Juni, mencapai puncaknya di angka <strong>Rp75.000.000</strong>. Margin kotor juga semakin melebar di Q2.
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <div className={`text-sm font-bold uppercase tracking-wider mb-2 ${tc.textSub} flex items-center`}><AlertCircle className="w-4 h-4 mr-2"/> Deteksi Anomali</div>
+                        <p className={`text-sm leading-relaxed ${tc.textMain}`}>
+                          Terdapat anomali penurunan pendapatan di bulan <strong>Maret</strong> sementara biaya operasional stagnan. Hal ini mengindikasikan ketidakefisienan pada periode tersebut.
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <div className={`text-sm font-bold uppercase tracking-wider mb-2 ${tc.textSub} flex items-center`}><Sparkles className="w-4 h-4 mr-2"/> Actionable Insights</div>
+                        <p className={`text-sm leading-relaxed ${tc.textMain}`}>
+                          Rasio pengguna aktif terhadap total pengguna menyempit di Q4 (86%). Pertahankan momentum ini dengan meluncurkan kampanye retensi di awal Q1 tahun depan.
+                        </p>
                       </div>
                     </div>
                   </div>
+
                 </div>
               ) : (
-                // ESPORTS MODE CONTENT
-                <div className="space-y-6 relative z-10">
-                  {/* Top Stats / MVP Card */}
-                  <div className="flex flex-col md:flex-row gap-6">
-                    <div className="md:w-1/3 p-1 rounded-2xl bg-gradient-to-b from-cyan-500 to-blue-600 shadow-[0_0_20px_rgba(6,182,212,0.3)]">
-                      <div className="h-full w-full bg-zinc-950 rounded-xl p-8 flex flex-col items-center text-center relative overflow-hidden">
-                        <div className="absolute top-0 right-0 bg-yellow-500 text-zinc-900 text-sm font-bold px-4 py-1 rounded-bl-lg rounded-tr-lg flex items-center space-x-1">
-                          <Trophy className="h-4 w-4" />
-                          <span>MVP</span>
-                        </div>
-                        <div className="w-28 h-28 rounded-full border-2 border-cyan-400 p-1 mb-5">
-                          <div className="w-full h-full rounded-full bg-zinc-800 flex items-center justify-center">
-                            <Gamepad2 className="h-12 w-12 text-cyan-400" />
-                          </div>
-                        </div>
-                        <h3 className="text-3xl font-black text-white tracking-wider mb-1">FAKER</h3>
-                        <p className="text-cyan-400 text-sm font-semibold mb-8 tracking-widest uppercase">Mid Laner • T1</p>
-                        
-                        <div className="w-full grid grid-cols-3 gap-2 border-t border-zinc-800/80 pt-6">
-                          <div>
-                            <p className="text-xs text-zinc-500 uppercase font-bold tracking-wider mb-1">Kills</p>
-                            <p className="text-2xl font-black text-white">12</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-zinc-500 uppercase font-bold tracking-wider mb-1">Deaths</p>
-                            <p className="text-2xl font-black text-red-400">2</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-zinc-500 uppercase font-bold tracking-wider mb-1">Assists</p>
-                            <p className="text-2xl font-black text-cyan-400">8</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="md:w-2/3 grid grid-cols-2 gap-4">
-                      <div className="p-6 rounded-2xl bg-zinc-900/80 backdrop-blur-sm border border-zinc-800 flex items-center space-x-5">
-                        <div className="p-4 rounded-xl bg-cyan-950 text-cyan-400 border border-cyan-900/50"><Crosshair className="h-8 w-8" /></div>
-                        <div>
-                          <p className="text-sm text-zinc-400 font-medium mb-1">Team Accuracy</p>
-                          <p className="text-3xl font-bold text-white">68.4%</p>
-                        </div>
-                      </div>
-                      <div className="p-6 rounded-2xl bg-zinc-900/80 backdrop-blur-sm border border-zinc-800 flex items-center space-x-5">
-                        <div className="p-4 rounded-xl bg-purple-950 text-purple-400 border border-purple-900/50"><Shield className="h-8 w-8" /></div>
-                        <div>
-                          <p className="text-sm text-zinc-400 font-medium mb-1">Damage Taken</p>
-                          <p className="text-3xl font-bold text-white">124k</p>
-                        </div>
-                      </div>
-                      <div className="p-6 rounded-2xl bg-zinc-900/80 backdrop-blur-sm border border-zinc-800 flex items-center space-x-5 col-span-2">
-                        <div className="p-4 rounded-xl bg-amber-950 text-amber-400 border border-amber-900/50"><Zap className="h-8 w-8" /></div>
-                        <div className="flex-grow">
-                          <div className="flex justify-between mb-2">
-                            <p className="text-sm text-zinc-400 font-medium">Match Dominance Index</p>
-                            <p className="text-sm text-amber-400 font-bold">87/100</p>
-                          </div>
-                          <div className="h-3 w-full bg-zinc-800 rounded-full overflow-hidden">
-                            <div className="h-full bg-gradient-to-r from-amber-500 to-yellow-300 w-[87%] shadow-[0_0_10px_rgba(245,158,11,0.5)]"></div>
-                          </div>
-                        </div>
-                      </div>
+                // --- KONTEN TAB ESPORTS ---
+                <div className="space-y-8 relative z-10">
+                  
+                  {/* AI SMART SELECTOR NOTE */}
+                  <div className={`p-4 rounded-xl flex items-start space-x-4 border-l-4 border-cyan-500 bg-cyan-50/50 dark:bg-cyan-900/20 text-cyan-900 dark:text-cyan-200`}>
+                    <Lightbulb className="h-6 w-6 mt-0.5 flex-shrink-0 text-cyan-500" />
+                    <div>
+                      <h4 className="font-bold mb-1">💡 AI Note: Pemilihan Model Grafik</h4>
+                      <p className="text-sm leading-relaxed opacity-90">
+                        Berdasarkan tangkapan layar, AI berhasil mengekstrak metrik multi-dimensi pemain dan statistik KDA kompetitif. <strong>Radar Chart</strong> digunakan untuk memvisualisasikan kelengkapan *skill* secara holistik, sedangkan <strong>Horizontal Bar Chart</strong> dipilih karena lebih optimal membandingkan akumulasi *Kills, Deaths, Assists* antar pemain dalam format papan peringkat (Leaderboard).
+                      </p>
                     </div>
                   </div>
 
-                  {/* Charts */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="p-6 rounded-2xl bg-zinc-900/80 backdrop-blur-sm border border-zinc-800 relative overflow-hidden group">
-                      <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent pointer-events-none"></div>
-                      <h3 className="text-lg font-bold mb-6 text-white flex items-center"><Gamepad2 className="w-5 h-5 mr-2 text-cyan-400"/> KDA Comparison</h3>
-                      <div className="h-[250px] w-full">
+                  {/* Charts Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    
+                    {/* Chart 1: Radar Chart */}
+                    <div className={`p-6 flex flex-col justify-between ${tc.card}`}>
+                      <h3 className={`text-xl font-bold mb-6 flex items-center ${tc.textMain}`}>
+                        <Target className="w-5 h-5 mr-2" /> Keseimbangan Performa Tim
+                      </h3>
+                      <div className="h-[320px] w-full flex items-center justify-center">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={kdaData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#a1a1aa' }} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#a1a1aa' }} />
-                            <Tooltip cursor={{ fill: '#27272a' }} contentStyle={{ backgroundColor: '#18181b', borderRadius: '12px', border: '1px solid #3f3f46', color: '#fff' }} />
-                            <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px' }} />
-                            <Bar dataKey="K" fill="#06b6d4" radius={[4, 4, 0, 0]} name="Kills" />
-                            <Bar dataKey="A" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Assists" />
-                            <Bar dataKey="D" fill="#ef4444" radius={[4, 4, 0, 0]} name="Deaths" />
+                          <RadarChart cx="50%" cy="50%" outerRadius="70%" data={playerStatsData}>
+                            <PolarGrid stroke={tc.gridLine} />
+                            <PolarAngleAxis dataKey="aspek" tick={{ fill: tc.chartText, fontSize: 13, fontWeight: 600 }} />
+                            <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                            <Radar name="Skor Tim" dataKey="nilai" stroke={tc.accent1} strokeWidth={3} fill={tc.accent1} fillOpacity={theme === 'cinematic' ? 0.4 : 0.2} />
+                            <Tooltip contentStyle={{ backgroundColor: theme === 'cinematic' ? '#18181b' : '#fff', borderColor: tc.gridLine, color: tc.textMain }} />
+                          </RadarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    {/* Chart 2: Horizontal Bar Chart */}
+                    <div className={`p-6 flex flex-col justify-between ${tc.card}`}>
+                      <h3 className={`text-xl font-bold mb-6 flex items-center ${tc.textMain}`}>
+                        <Gamepad2 className="w-5 h-5 mr-2" /> Komparasi KDA Papan Peringkat
+                      </h3>
+                      <div className="h-[320px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={kdaData} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke={tc.gridLine} />
+                            <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: tc.chartText }} />
+                            <YAxis dataKey="pemain" type="category" axisLine={false} tickLine={false} tick={{ fill: tc.chartText, fontWeight: 500 }} width={80} />
+                            <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} contentStyle={{ backgroundColor: theme === 'cinematic' ? '#18181b' : '#fff', borderColor: tc.gridLine, color: tc.textMain, borderRadius: theme === 'profesional' ? '0px' : '12px' }} />
+                            <Legend wrapperStyle={{ paddingTop: '10px' }} />
+                            <Bar dataKey="Kills" stackId="a" fill={tc.accent1} name="Kills (K)" radius={theme === 'profesional' ? [0,0,0,0] : [0, 4, 4, 0]} />
+                            <Bar dataKey="Assists" stackId="a" fill={tc.accent2} name="Assists (A)" radius={theme === 'profesional' ? [0,0,0,0] : [0, 4, 4, 0]} />
+                            <Bar dataKey="Deaths" fill={tc.accent3} name="Deaths (D)" radius={theme === 'profesional' ? [0,0,0,0] : [0, 4, 4, 0]} />
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
                     </div>
 
-                    <div className="p-6 rounded-2xl bg-zinc-900/80 backdrop-blur-sm border border-zinc-800 relative overflow-hidden group">
-                      <div className="absolute inset-0 bg-gradient-to-bl from-purple-500/5 to-transparent pointer-events-none"></div>
-                      <h3 className="text-lg font-bold mb-6 text-white flex items-center"><Crosshair className="w-5 h-5 mr-2 text-purple-400"/> MVP Stats Radar</h3>
-                      <div className="h-[250px] w-full flex items-center justify-center">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <RadarChart cx="50%" cy="50%" outerRadius="75%" data={playerStatsData}>
-                            <PolarGrid stroke="#3f3f46" />
-                            <PolarAngleAxis dataKey="subject" tick={{ fill: '#a1a1aa', fontSize: 12 }} />
-                            <PolarRadiusAxis angle={30} domain={[0, 150]} tick={false} axisLine={false} />
-                            <Radar name="Faker" dataKey="A" stroke="#06b6d4" strokeWidth={2} fill="#06b6d4" fillOpacity={0.5} />
-                            <Tooltip contentStyle={{ backgroundColor: '#18181b', borderRadius: '12px', border: '1px solid #3f3f46', color: '#fff' }} />
-                          </RadarChart>
-                        </ResponsiveContainer>
+                  </div>
+
+                  {/* AI Insight Summary - Esports */}
+                  <div className={`p-6 sm:p-8 mt-8 border-l-4 ${theme === 'cinematic' ? 'bg-zinc-900 border-purple-500' : 'bg-slate-50 border-purple-500'} ${theme === 'profesional' ? 'rounded-none' : 'rounded-2xl'}`}>
+                    <div className="flex items-center space-x-3 mb-6">
+                      <div className={`p-2 rounded-lg ${tc.badgeBg}`}>
+                        <Activity className="h-6 w-6" />
+                      </div>
+                      <h3 className={`text-2xl font-bold ${tc.textMain}`}>Rangkuman Otomatis AI</h3>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="space-y-2">
+                        <div className={`text-sm font-bold uppercase tracking-wider mb-2 ${tc.textSub} flex items-center`}><TrendingUp className="w-4 h-4 mr-2"/> Sorotan Tren</div>
+                        <p className={`text-sm leading-relaxed ${tc.textMain}`}>
+                          <strong>Player 4</strong> mendominasi jumlah <em>Kills</em> (20) dengan tingkat kematian sangat minim, menjadikannya MVP dalam parameter <em>Damage Output</em>.
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <div className={`text-sm font-bold uppercase tracking-wider mb-2 ${tc.textSub} flex items-center`}><AlertCircle className="w-4 h-4 mr-2"/> Deteksi Anomali</div>
+                        <p className={`text-sm leading-relaxed ${tc.textMain}`}>
+                          Radar Chart menunjukkan <strong>Agresivitas tim</strong> berada di angka terendah (78). Tim bermain terlalu pasif dan mengandalkan visi peta ketimbang inisiasi serangan.
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <div className={`text-sm font-bold uppercase tracking-wider mb-2 ${tc.textSub} flex items-center`}><Sparkles className="w-4 h-4 mr-2"/> Actionable Insights</div>
+                        <p className={`text-sm leading-relaxed ${tc.textMain}`}>
+                          Tingkatkan tempo permainan (Agresivitas) di ronde awal. Manfaatkan <strong>Player 5</strong> yang memiliki tingkat <em>Assists</em> tertinggi (22) sebagai inisiator utama *teamfight*.
+                        </p>
                       </div>
                     </div>
                   </div>
+
                 </div>
               )}
             </div>
