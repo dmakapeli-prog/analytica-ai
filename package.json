@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.105.0",
     "html2canvas-pro": "^1.5.8",
     "jspdf": "^3.0.1",
     "lucide-react": "^1.21.0",
