@@ -273,7 +273,7 @@ export default function AnalyticaAI() {
       sample_data: rawData.slice(0, 5)
     };
     
-    const summaryString = JSON.stringify(summaryObj);
+    const summaryString = JSON.stringify(summaryObj).replace(/[^\x00-\x7F]/g, "");
 
     try {
       const res = await fetch('/api/analyze', {
